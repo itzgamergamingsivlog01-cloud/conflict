@@ -179,7 +179,7 @@
 
         async function loadIntel() {
             try {
-                const res = await fetch('http://localhost:18080/api/all');
+                const res = await fetch('intel_data.json');
                 let data = await res.json();
                 
                 if (currentFilter !== 'all') {

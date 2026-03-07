@@ -10,88 +10,35 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
         
-        body {
-            background-color: #05070a;
-            color: #e5e7eb;
-            font-family: 'JetBrains Mono', monospace;
-            margin: 0;
-            overflow: hidden;
-        }
+        body { background-color: #05070a; color: #e5e7eb; font-family: 'JetBrains Mono', monospace; margin: 0; overflow: hidden; }
+        #map { height: 100vh; width: 100%; background: #0a0c10; }
 
-        #map {
-            height: 100vh;
-            width: 100%;
-            background: #0a0c10;
-        }
+        /* Sidebar Styling */
+        .sidebar { position: absolute; left: 0; top: 0; width: 400px; height: 100vh; background: rgba(10, 12, 16, 0.95); border-right: 1px solid #1f2937; z-index: 1000; display: flex; flex-direction: column; }
+        .nav-item { padding: 12px 20px; cursor: pointer; border-left: 3px solid transparent; transition: all 0.2s; font-size: 0.8rem; color: #9ca3af; text-transform: uppercase; }
+        .nav-item.active { background: rgba(31, 41, 55, 0.5); border-left-color: #ef4444; color: #fff; }
 
-        .sidebar {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 400px;
-            height: 100vh;
-            background: rgba(10, 12, 16, 0.95);
-            border-right: 1px solid #1f2937;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .nav-item {
-            padding: 12px 20px;
-            cursor: pointer;
-            border-left: 3px solid transparent;
-            transition: all 0.2s;
-            font-size: 0.8rem;
-            color: #9ca3af;
-            text-transform: uppercase;
-        }
-
-        .nav-item.active {
-            background: rgba(31, 41, 55, 0.5);
-            border-left-color: #ef4444;
-            color: #fff;
-        }
-
-        .news-card {
-            background: rgba(17, 24, 39, 0.5);
-            border-left: 4px solid #374151;
-            margin-bottom: 1rem;
-            transition: all 0.2s;
-        }
-
+        /* News Cards */
+        .news-card { background: rgba(17, 24, 39, 0.5); border-left: 4px solid #374151; margin-bottom: 1rem; transition: all 0.3s; cursor: pointer; overflow: hidden; }
         .news-card.israel { border-left-color: #00f2ff; }
         .news-card.iran { border-left-color: #ff8c00; }
-        .news-card:hover { transform: translateX(5px); background: rgba(31, 41, 55, 0.8); }
+        .news-card:hover { background: rgba(31, 41, 55, 0.8); }
+        .expanded-text { display: none; margin-top: 10px; font-size: 0.75rem; color: #9ca3af; border-top: 1px solid #2d3748; padding-top: 10px; }
 
-        .stat-card {
-            background: rgba(17, 24, 39, 0.5);
-            border: 1px solid #1f2937;
-            padding: 12px;
-            border-radius: 4px;
-            margin-bottom: 0.5rem;
+        /* Pulse Animation pentru Hartă */
+        @keyframes pulse-marker {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.5); opacity: 0.3; }
+            100% { transform: scale(1); opacity: 0.8; }
         }
+        .pulse-icon { border-radius: 50%; box-shadow: 0 0 0 0 rgba(0, 242, 255, 0.7); animation: pulse-marker 2s infinite; }
 
-        .terminal-signature {
-            padding: 15px 20px;
-            border-top: 1px solid #1f2937;
-            color: #4b5563;
-            font-size: 0.7rem;
-            letter-spacing: 0.1em;
-            background: rgba(5, 7, 10, 0.95);
-        }
-
+        .stat-card { background: rgba(17, 24, 39, 0.5); border: 1px solid #1f2937; padding: 12px; border-radius: 4px; margin-bottom: 0.5rem; }
+        .terminal-signature { padding: 15px 20px; border-top: 1px solid #1f2937; color: #4b5563; font-size: 0.7rem; letter-spacing: 0.1em; background: rgba(5, 7, 10, 0.95); }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #0a0c10; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; }
-
-        .filter-btn {
-            font-size: 10px;
-            padding: 4px 12px;
-            border: 1px solid #1f2937;
-            cursor: pointer;
-            text-transform: uppercase;
-        }
+        .filter-btn { font-size: 10px; padding: 4px 12px; border: 1px solid #1f2937; cursor: pointer; text-transform: uppercase; }
         .filter-btn.active { background: #1f2937; border-color: #4b5563; }
     </style>
 </head>
@@ -102,7 +49,7 @@
             <h1 class="text-xs font-bold tracking-widest text-gray-500 uppercase">Stratcom Terminal</h1>
             <div class="flex items-center mt-2">
                 <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2"></div>
-                <h2 class="text-lg font-bold">LIVE INTELLIGENCE</h2>
+                <h2 class="text-lg font-bold uppercase">Live Intelligence</h2>
             </div>
         </div>
 
@@ -118,8 +65,7 @@
                 <button id="btn-israel" class="filter-btn text-cyan-400" onclick="setFilter('israel')">ISR_NEWS</button>
                 <button id="btn-iran" class="filter-btn text-orange-400" onclick="setFilter('iran')">IRN_NEWS</button>
             </div>
-            <div id="main-list" class="space-y-4">
-                </div>
+            <div id="main-list" class="space-y-4"></div>
         </div>
 
         <div class="terminal-signature">
@@ -144,50 +90,51 @@
 
         let currentTab = 'live';
         let currentFilter = 'all';
-        let markers = [];
+        let markersMap = {}; // Folosim un obiect pentru a gasi usor markerul dupa titlu
 
         async function loadData() {
             try {
-                let file = 'intel_data.json';
-                if (currentTab === 'equipment') file = 'equipment.json';
-                if (currentTab === 'casualties') file = 'casualties.json';
-
-                // Adaugam timestamp pentru a forta browserul sa ia fisierul nou (fara cache)
+                let file = currentTab === 'live' ? 'intel_data.json' : (currentTab === 'equipment' ? 'equipment.json' : 'casualties.json');
                 const res = await fetch(`${file}?t=${new Date().getTime()}`);
                 const data = await res.json();
-                
                 renderList(data);
-                
-                if(currentTab === 'live') {
-                    updateMap(data);
-                } else {
-                    clearMarkers();
-                }
-            } catch (err) { 
-                console.error("Data Fetch Error:", err);
-                document.getElementById('main-list').innerHTML = `<div class="text-gray-600 text-xs uppercase p-4">Waiting for incoming data stream...</div>`;
-            }
+                if(currentTab === 'live') updateMap(data);
+            } catch (err) { console.error("Fetch Error:", err); }
+        }
+
+        function toggleExpand(id) {
+            const el = document.getElementById(`text-${id}`);
+            el.style.display = el.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function focusLocation(lat, lon, title) {
+            map.flyTo([lat, lon], 10, { animate: true, duration: 1.5 });
+            if(markersMap[title]) markersMap[title].openPopup();
         }
 
         function renderList(data) {
             const list = document.getElementById('main-list');
             list.innerHTML = '';
-            const filterBar = document.getElementById('filter-bar');
-            filterBar.style.display = currentTab === 'live' ? 'flex' : 'none';
+            document.getElementById('filter-bar').style.display = currentTab === 'live' ? 'flex' : 'none';
 
             if (currentTab === 'live') {
-                data.filter(i => currentFilter === 'all' || i.side === currentFilter).forEach(item => {
+                data.filter(i => currentFilter === 'all' || i.side === currentFilter).forEach((item, index) => {
                     const card = document.createElement('div');
-                    card.className = `news-card ${item.side} p-4 rounded shadow-sm`;
+                    card.className = `news-card ${item.side} p-4 rounded`;
+                    // Click simplu: Expand | Double click: Fly to map
+                    card.onclick = () => toggleExpand(index);
+                    card.ondblclick = () => item.lat && focusLocation(item.lat, item.lon, item.titlu);
+                    
                     card.innerHTML = `
-                        <div class="flex justify-between text-[10px] mb-1 font-bold">
+                        <div class="flex justify-between text-[9px] mb-1 font-bold opacity-60">
                             <span class="${item.side === 'israel' ? 'text-cyan-400' : 'text-orange-400'}">${item.side.toUpperCase()}</span>
-                            <span class="text-gray-500">${new Date(item.time).toLocaleTimeString()}</span>
+                            <span>${new Date(item.time).toLocaleString('ro-RO')}</span>
                         </div>
-                        <h3 class="text-sm font-bold leading-tight">${item.titlu}</h3>
-                        <div class="mt-2 flex justify-between items-center">
-                            <span class="text-[9px] px-1 bg-gray-800 text-gray-400 border border-gray-700">${item.status.toUpperCase()}</span>
-                            <a href="${item.link}" target="_blank" class="text-[9px] text-blue-400 uppercase">Source ↗</a>
+                        <h3 class="text-xs font-bold leading-tight">${item.titlu}</h3>
+                        <div id="text-${index}" class="expanded-text">${item.full_text}</div>
+                        <div class="mt-2 flex justify-between items-center text-[8px] uppercase tracking-widest opacity-50">
+                            <span>Status: ${item.status}</span>
+                            <span class="text-blue-400">Double-click to locate ⌖</span>
                         </div>
                     `;
                     list.appendChild(card);
@@ -196,56 +143,45 @@
                 data.forEach(stat => {
                     const card = document.createElement('div');
                     card.className = "stat-card flex justify-between items-center";
-                    card.innerHTML = `
-                        <span class="text-xs text-gray-400 uppercase">${stat.name}</span>
-                        <span class="font-bold ${currentTab === 'casualties' ? 'text-red-500' : 'text-yellow-500'}">${stat.count}</span>
-                    `;
+                    card.innerHTML = `<span class="text-xs text-gray-400 uppercase">${stat.name}</span><span class="font-bold ${currentTab === 'casualties' ? 'text-red-500' : 'text-yellow-500'}">${stat.count}</span>`;
                     list.appendChild(card);
                 });
             }
         }
 
-        function clearMarkers() {
-            markers.forEach(m => map.removeLayer(m));
-            markers = [];
-        }
-
         function updateMap(data) {
-            clearMarkers();
+            Object.values(markersMap).forEach(m => map.removeLayer(m));
+            markersMap = {};
+
             data.forEach(item => {
                 if (item.lat && item.lon) {
-                    const m = L.circleMarker([item.lat, item.lon], {
-                        radius: 6, 
-                        fillColor: item.side === 'israel' ? '#00f2ff' : '#ff8c00',
-                        color: "#fff", 
-                        weight: 1, 
-                        fillOpacity: 0.8
-                    }).addTo(map).bindPopup(`<b>${item.titlu}</b>`);
-                    markers.push(m);
+                    const color = item.side === 'israel' ? '#00f2ff' : '#ff8c00';
+                    
+                    // Marker personalizat cu efect de puls
+                    const pulseIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div style="background-color:${color}; width:10px; height:10px; border-radius:50%; border:2px solid white;" class="pulse-icon"></div>`,
+                        iconSize: [10, 10],
+                        iconAnchor: [5, 5]
+                    });
+
+                    const m = L.marker([item.lat, item.lon], { icon: pulseIcon }).addTo(map)
+                        .bindPopup(`<div style="color:#000; font-family:'JetBrains Mono'; font-size:11px;"><b>${item.titlu}</b></div>`);
+                    
+                    markersMap[item.titlu] = m;
                 }
             });
         }
 
-        // Definim functiile pe obiectul window pentru a fi accesibile din HTML
         window.switchTab = function(tab) {
             currentTab = tab;
-            
-            // Update UI
-            document.getElementById('nav-live').classList.toggle('active', tab === 'live');
-            document.getElementById('nav-equipment').classList.toggle('active', tab === 'equipment');
-            document.getElementById('nav-casualties').classList.toggle('active', tab === 'casualties');
-            
+            ['nav-live', 'nav-equipment', 'nav-casualties'].forEach(id => document.getElementById(id).classList.toggle('active', id.includes(tab)));
             loadData();
         };
 
         window.setFilter = function(f) {
             currentFilter = f;
-            
-            // Update UI
-            document.getElementById('btn-all').classList.toggle('active', f === 'all');
-            document.getElementById('btn-israel').classList.toggle('active', f === 'israel');
-            document.getElementById('btn-iran').classList.toggle('active', f === 'iran');
-            
+            ['btn-all', 'btn-israel', 'btn-iran'].forEach(id => document.getElementById(id).classList.toggle('active', id.includes(f)));
             loadData();
         };
 

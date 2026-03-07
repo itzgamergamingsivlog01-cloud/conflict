@@ -148,13 +148,18 @@ function applyFilterAndRender() {
         filtered.forEach((item, index) => {
             const card = document.createElement('div');
             card.className = `news-card ${item.side} p-4 rounded`;
+            
+            // LOGICA NOUĂ PENTRU LINK:
+            // Căutăm link-ul în orice câmp posibil din JSON
+            const rawLink = item.source || item.link || item.url || item.telegram_link || "";
+            
+            // Curățăm link-ul de eventuale spații și verificăm dacă e valid
+            const finalLink = rawLink.trim();
+            const hasLink = finalLink.startsWith('http');
+
             card.onclick = () => toggleExpand(index);
             card.ondblclick = () => item.lat && focusLocation(item.lat, item.lon, item.titlu);
             
-            // Verificăm toate variantele posibile de nume pentru link
-            const telegramLink = item.source || item.link || item.url || "#";
-            const hasLink = telegramLink !== "#";
-
             card.innerHTML = `
                 <div class="flex justify-between text-[9px] mb-1 font-bold opacity-60">
                     <span class="${item.side === 'israel' ? 'text-cyan-400' : 'text-orange-400'}">${item.side.toUpperCase()}</span>
@@ -165,7 +170,9 @@ function applyFilterAndRender() {
                 <div class="mt-2 flex justify-between items-center text-[8px] uppercase tracking-widest opacity-50">
                     <div class="flex gap-3">
                         <span>Status: ${item.status}</span>
-                        ${hasLink ? `<a href="${telegramLink}" target="_blank" class="source-link text-blue-400 font-bold" onclick="event.stopPropagation()">SOURCE ↗</a>` : ''}
+                        ${hasLink ? 
+                            `<a href="${finalLink}" target="_blank" class="text-blue-400 font-bold hover:text-white" style="text-decoration: underline;" onclick="event.stopPropagation()">SOURCE ↗</a>` 
+                            : `<span class="text-gray-600 italic">[NO LINK]</span>`}
                     </div>
                     <span class="text-blue-400">Locate ⌖</span>
                 </div>
@@ -174,15 +181,16 @@ function applyFilterAndRender() {
         });
         updateMap(filtered);
     } else {
-                filtered.forEach(stat => {
-                    const card = document.createElement('div');
-                    card.className = "stat-card flex justify-between items-center";
-                    card.innerHTML = `<span class="text-xs text-gray-400 uppercase">${stat.name}</span><span class="font-bold ${currentTab === 'casualties' ? 'text-red-500' : 'text-yellow-500'}">${stat.count}</span>`;
-                    list.appendChild(card);
-                });
-                clearMarkers();
-            }
-        }
+        // ... codul pentru statistici rămâne la fel
+        filtered.forEach(stat => {
+            const card = document.createElement('div');
+            card.className = "stat-card flex justify-between items-center";
+            card.innerHTML = `<span class="text-xs text-gray-400 uppercase">${stat.name}</span><span class="font-bold ${currentTab === 'casualties' ? 'text-red-500' : 'text-yellow-500'}">${stat.count}</span>`;
+            list.appendChild(card);
+        });
+        clearMarkers();
+    }
+}
 
         function clearMarkers() {
             Object.values(markersMap).forEach(m => map.removeLayer(m));

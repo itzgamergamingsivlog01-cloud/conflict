@@ -151,7 +151,7 @@ function applyFilterAndRender() {
             
             // LOGICA NOUĂ PENTRU LINK:
             // Căutăm link-ul în orice câmp posibil din JSON
-            const rawLink = item.source || item.link || item.url || item.telegram_link || "";
+            const rawLink = item.link || item.source || item.url || "";
             
             // Curățăm link-ul de eventuale spații și verificăm dacă e valid
             const finalLink = rawLink.trim();

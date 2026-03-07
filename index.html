@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #map { height: 100%; width: 100%; background: #000; }
+        
+        .nav-btn { 
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+            border-left: 4px solid transparent; 
+            cursor: pointer; 
+            color: #64748b; 
+        }
+        
+        .nav-btn:hover {
+            background: rgba(226, 232, 240, 0.05);
+            color: #f8fafc;
+            padding-left: 1.25rem;
+            border-left-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .nav-btn-active { 
+            background: rgba(30, 41, 59, 0.5) !important; 
+            border-left-color: #ef4444 !important; 
+            color: white !important; 
+            padding-left: 1.25rem;
+        }
+        
+        .intel-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .intel-card:hover {
+            background: rgba(30, 41, 59, 0.4) !important;
+            transform: scale(1.01);
+            box-shadow: inset 10px 0 20px -10px rgba(255, 255, 255, 0.05);
+        }
+
+        .pulse-icon { 
+            position: absolute; width: 100%; height: 100%; border-radius: 50%; 
+            animation: marker-pulse 2s infinite; opacity: 0.6;
+        }
+        @keyframes marker-pulse { 
+            0% { transform: scale(0.5); opacity: 0.8; } 
+            100% { transform: scale(3); opacity: 0; } 
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 3px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #1e293b; }
+        
+        .leaflet-tooltip { 
+            background: #0c111a !important; border: 1px solid #1e293b !important; 
+            color: #cbd5e1 !important; font-family: monospace; font-size: 9px; text-transform: uppercase;
+        }
+
+        .filter-btn {
+            background: rgba(12, 17, 26, 0.8);
+            border: 1px solid #1e293b;
+            padding: 6px 12px;
+            font-size: 9px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+        .filter-btn:hover { background: #1e293b; color: white; }
+        .filter-btn.active { border-bottom: 2px solid white; color: white; background: #1e293b; }
+
+        #intel-sidebar { overflow: hidden; }
+    </style>
+</head>
+<body class="bg-[#05070a] text-slate-400 flex h-screen overflow-hidden font-mono text-[11px]">
+
+    <div id="news-modal" class="hidden fixed inset-0 z-[3000] bg-black/95 backdrop-blur-md flex items-center justify-center p-6">
+        <div class="bg-[#0c111a] border border-slate-800 w-full max-w-2xl shadow-2xl relative flex flex-col max-h-[85vh]">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <div id="modal-body" class="p-8 overflow-y-auto custom-scroll"></div>
+        </div>
+    </div>
+
+    <nav class="w-64 bg-[#080a0f] border-r border-slate-900 p-4 flex flex-col gap-2 z-20">
+        <div class="text-red-600 font-black mb-8 border-b border-red-900/10 pb-4 text-center uppercase tracking-[0.2em] text-[10px]">Stratcom Terminal</div>
+        <button onclick="uiSelect(this, 'news')" class="nav-btn nav-btn-active p-3 text-left flex items-center gap-3 uppercase font-bold">
+            <i class="fa-solid fa-tower-broadcast text-red-500"></i> Live Feed
+        </button>
+        <button onclick="uiSelect(this, 'equipment')" class="nav-btn p-3 text-left flex items-center gap-3 uppercase font-bold">
+            <i class="fa-solid fa-shield-halved"></i> Equipment
+        </button>
+        <button onclick="uiSelect(this, 'casualties')" class="nav-btn p-3 text-left flex items-center gap-3 uppercase font-bold">
+            <i class="fa-solid fa-users-rays text-orange-600"></i> Casualties
+        </button>
+    </nav>
+
+    <section id="intel-sidebar" class="w-[450px] transition-all duration-500 flex flex-col border-r border-slate-900 bg-[#06080c] z-10 shadow-2xl relative">
+        <div id="column-title" class="p-4 border-b border-slate-800 text-[9px] uppercase font-bold tracking-[0.3em] text-slate-600 italic whitespace-nowrap">SIGINT Incoming</div>
+        <div id="main-container" class="flex-1 overflow-y-auto custom-scroll p-4 space-y-3 min-w-[450px]"></div>
+    </section>
+
+    <button onclick="toggleSidebar()" 
+            id="toggle-btn-master"
+            class="fixed left-[706px] top-1/2 transform -translate-y-1/2 bg-[#0c111a] border border-slate-800 p-2 z-[4000] hover:text-white text-slate-500 shadow-2xl transition-all duration-500">
+        <i id="toggle-icon" class="fa-solid fa-chevron-left text-[10px]"></i>
+    </button>
+
+    <section class="flex-1 relative">
+        <div class="absolute top-6 left-6 z-[1000] flex gap-2">
+            <button onclick="setFilter('all')" id="btn-all" class="filter-btn active text-slate-400">ALL SECTORS</button>
+            <button onclick="setFilter('israel')" id="btn-israel" class="filter-btn text-[#00ced1] border-l-4 border-l-[#00ced1]">ISR_NEWS</button>
+            <button onclick="setFilter('iran')" id="btn-iran" class="filter-btn text-[#ff8c00] border-l-4 border-l-[#ff8c00]">IRN_NEWS</button>
+        </div>
+
+        <div id="map"></div>
+        
+        <div class="absolute bottom-6 right-6 z-[1000] bg-[#0c0f16]/90 border border-slate-800 p-4 backdrop-blur-md shadow-2xl text-[9px]">
+            <div class="mb-2 text-slate-500 uppercase border-b border-slate-800 pb-1 italic">Tactical Map Legend</div>
+            <div class="flex flex-col gap-3 font-bold">
+                <div class="flex items-center gap-3"><span class="w-2 h-2 rounded-full bg-[#00ced1] shadow-[0_0_10px_#00ced1]"></span> ISRAEL / IDF</div>
+                <div class="flex items-center gap-3"><span class="w-2 h-2 rounded-full bg-[#ff8c00] shadow-[0_0_10px_#ff8c00]"></span> IRAN / PROXIES</div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        var map = L.map('map', { 
+            zoomControl: false, 
+            attributionControl: false,
+            doubleClickZoom: false 
+        }).setView([32.5, 39.0], 6);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+        let markersLayer = L.layerGroup().addTo(map);
+        const markerPositions = new Map();
+        let currentFilter = 'all'; 
+        let sidebarOpen = true; 
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('intel-sidebar');
+            const icon = document.getElementById('toggle-icon');
+            const btn = document.getElementById('toggle-btn-master');
+            
+            if (sidebarOpen) {
+                sidebar.style.width = '0px';
+                sidebar.style.minWidth = '0px';
+                sidebar.style.borderRightWidth = '0px';
+                btn.style.left = '256px'; 
+                icon.classList.replace('fa-chevron-left', 'fa-chevron-right');
+            } else {
+                sidebar.style.width = '450px';
+                sidebar.style.minWidth = '450px';
+                sidebar.style.borderRightWidth = '1px';
+                btn.style.left = '706px'; 
+                icon.classList.replace('fa-chevron-right', 'fa-chevron-left');
+            }
+            sidebarOpen = !sidebarOpen;
+
+            let startTime = Date.now();
+            const duration = 500;
+            const syncMap = setInterval(() => {
+                map.invalidateSize(); 
+                if (Date.now() - startTime > duration) {
+                    clearInterval(syncMap);
+                    map.invalidateSize(); 
+                }
+            }, 16);
+        }
+
+        function cleanTitle(text) {
+            return text.replace(/^\[.*?\]\s*|^\(.*?\)s*|.*?:\s*/g, '').trim();
+        }
+
+        function setFilter(side) {
+            currentFilter = side;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${side}`).classList.add('active');
+            loadIntel(); 
+        }
+
+        async function loadIntel() {
+            try {
+                const res = await fetch('http://localhost:18080/api/all');
+                let data = await res.json();
+                
+                if (currentFilter !== 'all') {
+                    data = data.filter(item => {
+                        const lowTitle = item.titlu.toLowerCase();
+                        const isIsrael = (item.side === 'israel' || lowTitle.includes('idf') || lowTitle.includes('israel'));
+                        const isIran = (item.side === 'iran' || lowTitle.includes('iran') || lowTitle.includes('hezbollah'));
+                        return (currentFilter === 'israel' && isIsrael) || (currentFilter === 'iran' && isIran);
+                    });
+                }
+
+                data.sort((a, b) => new Date(b.time) - new Date(a.time));
+                const container = document.getElementById('main-container');
+                container.innerHTML = ''; 
+                markersLayer.clearLayers();
+
+                data.forEach(item => {
+                    const titleOriginalLow = item.titlu.toLowerCase();
+                    const displayTitle = cleanTitle(item.titlu);
+                    let color = '#ff8c00'; 
+                    if (item.side === 'israel' || titleOriginalLow.includes('idf') || titleOriginalLow.includes('israel')) {
+                        color = '#00ced1';
+                    }
+
+                    // Reparare logica timp
+                    const d = new Date(item.time);
+                    const isValidDate = !isNaN(d.getTime());
+                    const timeStr = isValidDate 
+                        ? d.toLocaleDateString('ro-RO', {day:'2-digit', month:'short'}) + " | " + 
+                          d.toLocaleTimeString('ro-RO', {hour:'2-digit', minute:'2-digit', hour12: false})
+                        : "DATA_PENDING";
+
+                    const card = document.createElement('div');
+                    card.className = "intel-card bg-[#0c111a]/60 border-l-4 p-4 cursor-pointer border-slate-900 group relative overflow-hidden";
+                    card.style.borderLeftColor = color;
+                    card.onclick = () => { openModal(item, color); };
+                    
+                    if (item.lat && item.lon) {
+                        card.ondblclick = () => { 
+                            map.flyTo([item.lat, item.lon], 10); 
+                        };
+                    }
+
+                    card.innerHTML = `
+                        <div class="flex justify-between mb-2 items-center">
+                            <span class="uppercase font-black text-[8px] ${item.status === 'unconfirmed' ? 'text-orange-500 animate-pulse' : 'text-cyan-500'}">${item.status}</span>
+                            <span class="text-yellow-600/80 text-[9px] font-bold font-mono">${timeStr}</span>
+                        </div>
+                        <div class="text-slate-100 font-bold leading-tight uppercase mb-2 text-[11px] tracking-tight group-hover:text-white">${displayTitle}</div>
+                        <div class="flex justify-between items-center mt-3">
+                            <div class="text-slate-600 text-[7px] font-black uppercase tracking-widest italic">Source: ${item.source}</div>
+                            ${item.lat ? '<div class="text-[7px] text-slate-700 italic group-hover:text-slate-500">DBL-CLICK FOCUS</div>' : ''}
+                        </div>
+                    `;
+                    container.appendChild(card);
+
+                    if (item.lat && item.lon && item.lat !== "None") {
+                        const icon = L.divIcon({
+                            html: `<div class="relative"><div class="pulse-icon" style="background:${color}; box-shadow: 0 0 15px ${color};"></div><div style="background:${color}; width:8px; height:8px; border-radius:1px; border:1px solid #fff; position:relative; z-index:10; transform: rotate(45deg);"></div></div>`,
+                            className: '', iconSize: [12, 12]
+                        });
+                        L.marker([item.lat, item.lon], {icon: icon})
+                         .bindTooltip(displayTitle, {direction: 'top', className: 'leaflet-tooltip'})
+                         .on('click', () => { openModal(item, color); })
+                         .addTo(markersLayer);
+                    }
+                });
+            } catch (err) { console.error("Link Failure", err); }
+        }
+
+        function openModal(item, color) {
+            // Ascunde butonul de toggle pentru a nu se suprapune
+            document.getElementById('toggle-btn-master').classList.add('hidden');
+            
+            const body = document.getElementById('modal-body');
+            body.innerHTML = `
+                <div class="text-[9px] font-black mb-4 text-red-600 uppercase tracking-[0.5em] animate-pulse">Incoming Intelligence Report</div>
+                <h2 class="text-2xl font-black text-white mb-6 leading-tight uppercase" style="border-left: 5px solid ${color}; padding-left: 20px;">${cleanTitle(item.titlu)}</h2>
+                <div class="text-slate-300 text-base leading-relaxed mb-8 font-sans bg-slate-900/30 p-4 border border-slate-800/50">${item.full_text || 'No detailed intel available.'}</div>
+                <div class="flex justify-between items-center border-t border-slate-800 pt-6">
+                    <div class="flex flex-col"><span class="text-slate-500 text-[10px] font-mono uppercase">Timestamp: ${item.time}</span><span class="text-slate-600 text-[10px] font-mono uppercase">Source: ${item.source}</span></div>
+                    <div class="flex gap-4">
+                        <button onclick="map.flyTo([${item.lat}, ${item.lon}], 10); closeModal();" class="bg-cyan-900/20 border border-cyan-900 text-cyan-500 px-6 py-2 text-[10px] font-black uppercase hover:bg-cyan-900 hover:text-white transition-all">Geolocate</button>
+                        <a href="${item.link}" target="_blank" class="bg-red-900/20 border border-red-900 text-red-500 px-6 py-2 text-[10px] font-black uppercase hover:bg-red-900 hover:text-white transition-all">Intercept Link</a>
+                    </div>
+                </div>`;
+            document.getElementById('news-modal').classList.remove('hidden');
+        }
+
+        function closeModal() { 
+            // Reafiseaza butonul de toggle
+            document.getElementById('toggle-btn-master').classList.remove('hidden');
+            document.getElementById('news-modal').classList.add('hidden'); 
+        }
+
+        async function loadData(type) {
+            try {
+                const res = await fetch(`http://localhost:18080/api/${type}`);
+                const data = await res.json();
+                const container = document.getElementById('main-container');
+                container.innerHTML = '';
+                data.forEach((item) => {
+                    const row = document.createElement('div');
+                    row.className = "flex justify-between p-4 bg-[#0c111a]/80 border border-slate-800 mb-2 hover:translate-x-2 transition-all";
+                    row.innerHTML = `<span class="uppercase font-bold text-slate-400 text-[10px]">${item.name || item.category}</span><b class="text-red-600 font-mono text-[14px]">${item.count}</b>`;
+                    container.appendChild(row);
+                });
+            } catch (err) { }
+        }
+
+        function uiSelect(el, type) {
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('nav-btn-active', 'text-white'));
+            el.classList.add('nav-btn-active', 'text-white');
+            document.getElementById('column-title').innerText = `TERMINAL_OPS // ${type.toUpperCase()}`;
+            if(type === 'news') loadIntel(); else loadData(type);
+        }
+
+        window.onload = loadIntel;
+        setInterval(() => { if(document.querySelector('.nav-btn-active').innerText.includes('LIVE')) loadIntel(); }, 30000);
+    </script>
+</body>
+</html>

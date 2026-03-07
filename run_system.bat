@@ -1,0 +1,9 @@
+@echo off
+title STRATCOM TERMINAL ENGINE
+echo Starting Python Scout...
+start /b python scout.py
+echo Starting C++ Server...
+start /b server.exe
+echo Launching Tactical Map...
+start index.html
+pause

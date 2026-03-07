@@ -137,42 +137,43 @@
             if(markersMap[title]) markersMap[title].openPopup();
         }
 
-        function applyFilterAndRender() {
-            const list = document.getElementById('main-list');
-            list.innerHTML = '';
-            document.getElementById('filter-bar').style.display = currentTab === 'live' ? 'flex' : 'none';
+function applyFilterAndRender() {
+    const list = document.getElementById('main-list');
+    list.innerHTML = '';
+    document.getElementById('filter-bar').style.display = currentTab === 'live' ? 'flex' : 'none';
 
-            const filtered = currentTab === 'live' ? rawData.filter(i => currentFilter === 'all' || i.side === currentFilter) : rawData;
+    const filtered = currentTab === 'live' ? rawData.filter(i => currentFilter === 'all' || i.side === currentFilter) : rawData;
 
-            if (currentTab === 'live') {
-                filtered.forEach((item, index) => {
-                    const card = document.createElement('div');
-                    card.className = `news-card ${item.side} p-4 rounded`;
-                    card.onclick = () => toggleExpand(index);
-                    card.ondblclick = () => item.lat && focusLocation(item.lat, item.lon, item.titlu);
-                    
-                    // Adaugam link-ul de Telegram daca exista in JSON
-                    const sourceHtml = item.source ? `<a href="${item.source}" target="_blank" class="source-link text-blue-400" onclick="event.stopPropagation()">SOURCE ↗</a>` : '';
+    if (currentTab === 'live') {
+        filtered.forEach((item, index) => {
+            const card = document.createElement('div');
+            card.className = `news-card ${item.side} p-4 rounded`;
+            card.onclick = () => toggleExpand(index);
+            card.ondblclick = () => item.lat && focusLocation(item.lat, item.lon, item.titlu);
+            
+            // Verificăm toate variantele posibile de nume pentru link
+            const telegramLink = item.source || item.link || item.url || "#";
+            const hasLink = telegramLink !== "#";
 
-                    card.innerHTML = `
-                        <div class="flex justify-between text-[9px] mb-1 font-bold opacity-60">
-                            <span class="${item.side === 'israel' ? 'text-cyan-400' : 'text-orange-400'}">${item.side.toUpperCase()}</span>
-                            <span>${new Date(item.time).toLocaleString('ro-RO')}</span>
-                        </div>
-                        <h3 class="text-xs font-bold leading-tight">${item.titlu}</h3>
-                        <div id="text-${index}" class="expanded-text">${item.full_text}</div>
-                        <div class="mt-2 flex justify-between items-center text-[8px] uppercase tracking-widest opacity-50">
-                            <div class="flex gap-3">
-                                <span>Status: ${item.status}</span>
-                                ${sourceHtml}
-                            </div>
-                            <span class="text-blue-400">Locate ⌖</span>
-                        </div>
-                    `;
-                    list.appendChild(card);
-                });
-                updateMap(filtered);
-            } else {
+            card.innerHTML = `
+                <div class="flex justify-between text-[9px] mb-1 font-bold opacity-60">
+                    <span class="${item.side === 'israel' ? 'text-cyan-400' : 'text-orange-400'}">${item.side.toUpperCase()}</span>
+                    <span>${new Date(item.time).toLocaleString('ro-RO')}</span>
+                </div>
+                <h3 class="text-xs font-bold leading-tight">${item.titlu}</h3>
+                <div id="text-${index}" class="expanded-text">${item.full_text}</div>
+                <div class="mt-2 flex justify-between items-center text-[8px] uppercase tracking-widest opacity-50">
+                    <div class="flex gap-3">
+                        <span>Status: ${item.status}</span>
+                        ${hasLink ? `<a href="${telegramLink}" target="_blank" class="source-link text-blue-400 font-bold" onclick="event.stopPropagation()">SOURCE ↗</a>` : ''}
+                    </div>
+                    <span class="text-blue-400">Locate ⌖</span>
+                </div>
+            `;
+            list.appendChild(card);
+        });
+        updateMap(filtered);
+    } else {
                 filtered.forEach(stat => {
                     const card = document.createElement('div');
                     card.className = "stat-card flex justify-between items-center";

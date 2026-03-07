@@ -41,7 +41,6 @@
             border: 2px solid #fff; 
             position: relative;
             z-index: 2;
-            /* Strălucire de bază */
             box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
         }
 
@@ -55,7 +54,6 @@
             z-index: 1;
         }
 
-        /* Culori specifice pentru luminozitate maximă */
         .dot-israel { background-color: #00f2ff !important; box-shadow: 0 0 20px #00f2ff, 0 0 40px #00f2ff !important; }
         .dot-iran { background-color: #ff8c00 !important; box-shadow: 0 0 20px #ff8c00, 0 0 40px #ff8c00 !important; }
 
@@ -66,6 +64,7 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; }
         .filter-btn { font-size: 10px; padding: 4px 12px; border: 1px solid #1f2937; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
         .filter-btn.active { background: #1f2937; border-color: #4b5563; box-shadow: 0 0 10px rgba(255,255,255,0.05); }
+        .source-link:hover { color: white; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -152,6 +151,9 @@
                     card.onclick = () => toggleExpand(index);
                     card.ondblclick = () => item.lat && focusLocation(item.lat, item.lon, item.titlu);
                     
+                    // Adaugam link-ul de Telegram daca exista in JSON
+                    const sourceHtml = item.source ? `<a href="${item.source}" target="_blank" class="source-link text-blue-400" onclick="event.stopPropagation()">SOURCE ↗</a>` : '';
+
                     card.innerHTML = `
                         <div class="flex justify-between text-[9px] mb-1 font-bold opacity-60">
                             <span class="${item.side === 'israel' ? 'text-cyan-400' : 'text-orange-400'}">${item.side.toUpperCase()}</span>
@@ -160,8 +162,11 @@
                         <h3 class="text-xs font-bold leading-tight">${item.titlu}</h3>
                         <div id="text-${index}" class="expanded-text">${item.full_text}</div>
                         <div class="mt-2 flex justify-between items-center text-[8px] uppercase tracking-widest opacity-50">
-                            <span>Status: ${item.status}</span>
-                            <span class="text-blue-400">Double-click to locate ⌖</span>
+                            <div class="flex gap-3">
+                                <span>Status: ${item.status}</span>
+                                ${sourceHtml}
+                            </div>
+                            <span class="text-blue-400">Locate ⌖</span>
                         </div>
                     `;
                     list.appendChild(card);

@@ -23,23 +23,49 @@
         .news-card.israel { border-left-color: #00f2ff; }
         .news-card.iran { border-left-color: #ff8c00; }
         .news-card:hover { background: rgba(31, 41, 55, 0.8); }
-        .expanded-text { display: none; margin-top: 10px; font-size: 0.75rem; color: #9ca3af; border-top: 1px solid #2d3748; padding-top: 10px; }
+        .expanded-text { display: none; margin-top: 10px; font-size: 0.75rem; color: #9ca3af; border-top: 1px solid #2d3748; padding-top: 10px; line-height: 1.4; }
 
-        /* Pulse Animation pentru Hartă */
+        /* EFECT LUMINOS PUNCTE (HIGH BRIGHTNESS) */
         @keyframes pulse-marker {
-            0% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.5); opacity: 0.3; }
-            100% { transform: scale(1); opacity: 0.8; }
+            0% { transform: scale(0.8); opacity: 1; filter: blur(0px); }
+            50% { transform: scale(2.2); opacity: 0; filter: blur(2px); }
+            100% { transform: scale(0.8); opacity: 1; filter: blur(0px); }
         }
-        .pulse-icon { border-radius: 50%; box-shadow: 0 0 0 0 rgba(0, 242, 255, 0.7); animation: pulse-marker 2s infinite; }
+
+        .pulse-wrapper { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; }
+        
+        .pulse-dot { 
+            width: 10px; 
+            height: 10px; 
+            border-radius: 50%; 
+            border: 2px solid #fff; 
+            position: relative;
+            z-index: 2;
+            /* Strălucire de bază */
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+        }
+
+        .pulse-ring { 
+            position: absolute; 
+            width: 25px; 
+            height: 25px; 
+            border-radius: 50%; 
+            animation: pulse-marker 1.5s infinite; 
+            border: 3px solid;
+            z-index: 1;
+        }
+
+        /* Culori specifice pentru luminozitate maximă */
+        .dot-israel { background-color: #00f2ff !important; box-shadow: 0 0 20px #00f2ff, 0 0 40px #00f2ff !important; }
+        .dot-iran { background-color: #ff8c00 !important; box-shadow: 0 0 20px #ff8c00, 0 0 40px #ff8c00 !important; }
 
         .stat-card { background: rgba(17, 24, 39, 0.5); border: 1px solid #1f2937; padding: 12px; border-radius: 4px; margin-bottom: 0.5rem; }
         .terminal-signature { padding: 15px 20px; border-top: 1px solid #1f2937; color: #4b5563; font-size: 0.7rem; letter-spacing: 0.1em; background: rgba(5, 7, 10, 0.95); }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #0a0c10; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; }
-        .filter-btn { font-size: 10px; padding: 4px 12px; border: 1px solid #1f2937; cursor: pointer; text-transform: uppercase; }
-        .filter-btn.active { background: #1f2937; border-color: #4b5563; }
+        .filter-btn { font-size: 10px; padding: 4px 12px; border: 1px solid #1f2937; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
+        .filter-btn.active { background: #1f2937; border-color: #4b5563; box-shadow: 0 0 10px rgba(255,255,255,0.05); }
     </style>
 </head>
 <body>
@@ -49,7 +75,7 @@
             <h1 class="text-xs font-bold tracking-widest text-gray-500 uppercase">Stratcom Terminal</h1>
             <div class="flex items-center mt-2">
                 <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2"></div>
-                <h2 class="text-lg font-bold uppercase">Live Intelligence</h2>
+                <h2 class="text-lg font-bold uppercase tracking-tight">Live Intelligence</h2>
             </div>
         </div>
 
@@ -90,15 +116,15 @@
 
         let currentTab = 'live';
         let currentFilter = 'all';
-        let markersMap = {}; // Folosim un obiect pentru a gasi usor markerul dupa titlu
+        let markersMap = {}; 
+        let rawData = [];
 
         async function loadData() {
             try {
                 let file = currentTab === 'live' ? 'intel_data.json' : (currentTab === 'equipment' ? 'equipment.json' : 'casualties.json');
                 const res = await fetch(`${file}?t=${new Date().getTime()}`);
-                const data = await res.json();
-                renderList(data);
-                if(currentTab === 'live') updateMap(data);
+                rawData = await res.json();
+                applyFilterAndRender();
             } catch (err) { console.error("Fetch Error:", err); }
         }
 
@@ -112,16 +138,17 @@
             if(markersMap[title]) markersMap[title].openPopup();
         }
 
-        function renderList(data) {
+        function applyFilterAndRender() {
             const list = document.getElementById('main-list');
             list.innerHTML = '';
             document.getElementById('filter-bar').style.display = currentTab === 'live' ? 'flex' : 'none';
 
+            const filtered = currentTab === 'live' ? rawData.filter(i => currentFilter === 'all' || i.side === currentFilter) : rawData;
+
             if (currentTab === 'live') {
-                data.filter(i => currentFilter === 'all' || i.side === currentFilter).forEach((item, index) => {
+                filtered.forEach((item, index) => {
                     const card = document.createElement('div');
                     card.className = `news-card ${item.side} p-4 rounded`;
-                    // Click simplu: Expand | Double click: Fly to map
                     card.onclick = () => toggleExpand(index);
                     card.ondblclick = () => item.lat && focusLocation(item.lat, item.lon, item.titlu);
                     
@@ -139,30 +166,39 @@
                     `;
                     list.appendChild(card);
                 });
+                updateMap(filtered);
             } else {
-                data.forEach(stat => {
+                filtered.forEach(stat => {
                     const card = document.createElement('div');
                     card.className = "stat-card flex justify-between items-center";
                     card.innerHTML = `<span class="text-xs text-gray-400 uppercase">${stat.name}</span><span class="font-bold ${currentTab === 'casualties' ? 'text-red-500' : 'text-yellow-500'}">${stat.count}</span>`;
                     list.appendChild(card);
                 });
+                clearMarkers();
             }
         }
 
-        function updateMap(data) {
+        function clearMarkers() {
             Object.values(markersMap).forEach(m => map.removeLayer(m));
             markersMap = {};
+        }
 
+        function updateMap(data) {
+            clearMarkers();
             data.forEach(item => {
                 if (item.lat && item.lon) {
-                    const color = item.side === 'israel' ? '#00f2ff' : '#ff8c00';
+                    const sideColor = item.side === 'israel' ? '#00f2ff' : '#ff8c00';
+                    const sideClass = item.side === 'israel' ? 'dot-israel' : 'dot-iran';
                     
-                    // Marker personalizat cu efect de puls
                     const pulseIcon = L.divIcon({
                         className: 'custom-div-icon',
-                        html: `<div style="background-color:${color}; width:10px; height:10px; border-radius:50%; border:2px solid white;" class="pulse-icon"></div>`,
-                        iconSize: [10, 10],
-                        iconAnchor: [5, 5]
+                        html: `
+                            <div class="pulse-wrapper">
+                                <div class="pulse-ring" style="border-color:${sideColor}"></div>
+                                <div class="pulse-dot ${sideClass}"></div>
+                            </div>`,
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
                     });
 
                     const m = L.marker([item.lat, item.lon], { icon: pulseIcon }).addTo(map)
@@ -181,8 +217,8 @@
 
         window.setFilter = function(f) {
             currentFilter = f;
-            ['btn-all', 'btn-israel', 'btn-iran'].forEach(id => document.getElementById(id).classList.toggle('active', id.includes(f)));
-            loadData();
+            ['btn-all', 'btn-israel', 'btn-iran'].forEach(id => document.getElementById(id).classList.toggle('active', id.includes(f) || (f === 'all' && id === 'btn-all')));
+            applyFilterAndRender();
         };
 
         setInterval(loadData, 60000);
